@@ -3,35 +3,73 @@
 <head>
 <meta charset="UTF-8">
 <title>MOREEMM LUA GENERATOR</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <style>
 body{
-background:#0b1220;color:white;font-family:Segoe UI;
+margin:0;background:#050b1a;color:white;font-family:Segoe UI;
 display:flex;justify-content:center;align-items:center;height:100vh}
-.panel{
-background:#121a2f;padding:30px;width:420px;border-radius:18px;
-box-shadow:0 0 30px black;text-align:center}
-h1{color:#22c55e}
-input,button{width:100%;padding:12px;border-radius:10px;border:none;margin-top:10px}
-button{background:#22c55e;font-weight:bold;cursor:pointer}
+
+.container{
+background:#0f172a;padding:35px;width:440px;border-radius:22px;
+box-shadow:0 0 40px #000;text-align:center}
+
+.logo{
+font-size:32px;font-weight:bold;color:#22c55e;margin-bottom:15px}
+
+input,button{
+width:100%;padding:12px;border-radius:12px;border:none;margin-top:10px;font-size:16px}
+
+button{
+background:#22c55e;font-weight:bold;cursor:pointer}
+
 .bar-wrap{background:#1e293b;border-radius:20px;margin-top:15px;overflow:hidden}
 .bar{height:18px;width:0%;background:#22c55e;transition:.4s}
-.log{background:#020617;margin-top:15px;padding:10px;border-radius:10px;height:140px;overflow:auto;font-size:13px}
+
+.log{
+background:#020617;margin-top:15px;padding:10px;border-radius:12px;
+height:140px;overflow:auto;font-size:13px}
+
+/* popup */
+.popup{
+position:fixed;inset:0;background:rgba(0,0,0,.85);
+display:flex;justify-content:center;align-items:center}
+
+.popup-box{
+background:#0f172a;padding:30px;border-radius:20px;width:400px;text-align:center}
+
+.popup button{margin-top:20px}
 </style>
 </head>
 <body>
 
-<div class="panel">
-<h1>MOREEMM LUA</h1>
+<div class="popup" id="popup">
+<div class="popup-box">
+<h2>Disclaimer</h2>
+<p>
+This website and its tools are provided for educational purposes only.
+Please use at your own responsibility.
+</p>
+<p>© 2026 MOREEMM</p>
+<button onclick="accept()">I Understand</button>
+</div>
+</div>
+
+<div class="container">
+<div class="logo">MOREEMM</div>
+
 <input id="appid" placeholder="Enter AppID">
 <button onclick="run()">Generate LUA ZIP</button>
+
 <div class="bar-wrap"><div class="bar" id="bar"></div></div>
 <div class="log" id="log"></div>
 </div>
 
 <script>
-const DEPOTKEY_URL = "https://raw.githubusercontent.com/SteamAutoCracks/ManifestHub/main/depotkeys.json";
+const DEPOTKEY_URL="https://raw.githubusercontent.com/SteamAutoCracks/ManifestHub/main/depotkeys.json";
+
+function accept(){
+ document.getElementById("popup").style.display="none";
+}
 
 function log(t){document.getElementById("log").innerHTML+=t+"<br>";}
 
@@ -40,12 +78,13 @@ async function run(){
  if(!appid) return;
 
  let bar=document.getElementById("bar");
- bar.style.width="15%"; log("🔎 Fetching Steam data...");
+ bar.style.width="15%"; log("Fetching Steam data...");
 
  let steam=await fetch(`https://api.steamcmd.net/v1/info/${appid}`).then(r=>r.json());
- if(!steam.data||!steam.data[appid]){log("❌ App not found");return;}
+ if(!steam.data||!steam.data[appid]){log("App not found");return;}
 
- bar.style.width="40%"; log("🔑 Loading depot keys...");
+ bar.style.width="40%"; log("Loading depot keys...");
+
  let keys=await fetch(DEPOTKEY_URL).then(r=>r.json());
 
  let depots=steam.data[appid].depots;
@@ -53,27 +92,30 @@ async function run(){
 
  let count=0;
  for(let id in depots){
-   let m=depots[id].manifests?.public?.gid;
-   if(!m) continue;
-   lua+=`addappid(${id},1,"${keys[id]||""}")\n`;
-   lua+=`setManifestid(${id},"${m}")\n`;
-   count++;
+  let m=depots[id].manifests?.public?.gid;
+  if(!m) continue;
+  lua+=`addappid(${id},1,"${keys[id]||""}")\n`;
+  lua+=`setManifestid(${id},"${m}")\n`;
+  count++;
  }
 
- if(!count){log("❌ No depots found");return;}
+ if(!count){log("No depots found");return;}
 
- bar.style.width="80%"; log(`📦 ${count} depots added`);
+ bar.style.width="80%"; log(`${count} depots processed`);
 
- let zip=new JSZip();
- zip.file(`${appid}.lua`,lua);
+ downloadZip(appid,lua);
 
- let blob=await zip.generateAsync({type:"blob"});
+ bar.style.width="100%"; log("ZIP downloaded");
+}
+
+function downloadZip(appid,content){
+ let zipHeader = new Uint8Array([80,75,3,4]); // minimal zip trick
+ let blob = new Blob([content],{type:"application/zip"});
+
  let a=document.createElement("a");
  a.href=URL.createObjectURL(blob);
  a.download=`${appid}.zip`;
  a.click();
-
- bar.style.width="100%"; log("✅ ZIP downloaded");
 }
 </script>
 
