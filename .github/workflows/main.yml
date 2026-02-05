@@ -1,0 +1,33 @@
+name: Steam Auto Dump
+
+on:
+  repository_dispatch:
+    types: [dump_app]
+
+jobs:
+  dump:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download SteamCMD
+      run: |
+        curl -o steamcmd.zip https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip
+        tar -xf steamcmd.zip
+
+    - name: Dump App
+      run: |
+        steamcmd.exe +login anonymous +app_info_print ${{ github.event.client_payload.appid }} +quit > dump.txt
+
+    - name: Parse (placeholder)
+      run: |
+        echo { "appid": ${{ github.event.client_payload.appid }}, "depots": [] } > manifests/${{ github.event.client_payload.appid }}.json
+
+    - name: Commit
+      run: |
+        git config --global user.email "bot@github.com"
+        git config --global user.name "DumpBot"
+        git add .
+        git commit -m "Dump ${{ github.event.client_payload.appid }}"
+        git push
