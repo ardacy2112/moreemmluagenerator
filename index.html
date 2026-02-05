@@ -2,94 +2,148 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>MOREEMM RGB Generator</title>
+<title>MOREEMM Lua Generator</title>
+
 <style>
+*{box-sizing:border-box;font-family:Segoe UI,Arial}
+
 body{
-background:#050505;
-font-family:Arial;
+margin:0;
+background:#020617;
+color:white;
 display:flex;
 justify-content:center;
 align-items:center;
 height:100vh;
-color:white;
+overflow:hidden;
 }
 
-.neon{
-background:#0f0f0f;
-padding:30px;
-border-radius:16px;
-box-shadow:
-0 0 15px #00f,
-0 0 30px #0ff,
-0 0 60px #f0f;
-animation:glow 3s infinite alternate;
-width:540px;
+.rgb{
+position:fixed;
+inset:0;
+background:linear-gradient(270deg,#22c55e,#0ea5e9,#a855f7,#22c55e);
+background-size:600% 600%;
+animation:flow 12s ease infinite;
+opacity:.18;
 }
 
-@keyframes glow{
-0%{box-shadow:0 0 10px #00f}
-50%{box-shadow:0 0 30px #0ff}
-100%{box-shadow:0 0 50px #f0f}
+@keyframes flow{
+0%{background-position:0% 50%}
+50%{background-position:100% 50%}
+100%{background-position:0% 50%}
 }
 
-input,textarea,button{
+.app{
+background:#0f172a;
+padding:42px;
+width:520px;
+border-radius:24px;
+box-shadow:0 0 40px #22c55e66;
+z-index:2;
+text-align:center;
+}
+
+.logo{
+font-size:36px;
+font-weight:900;
+background:linear-gradient(90deg,#22c55e,#0ea5e9,#a855f7);
+-webkit-background-clip:text;
+color:transparent;
+margin-bottom:20px;
+}
+
+input{
 width:100%;
-margin-top:10px;
-padding:12px;
-border-radius:10px;
+padding:15px;
+border-radius:14px;
 border:none;
-background:#111;
+background:#020617;
 color:white;
+font-size:16px;
+outline:none;
 }
 
 button{
-background:linear-gradient(90deg,#00f,#0ff,#f0f);
+margin-top:16px;
+width:100%;
+padding:15px;
+border-radius:16px;
+border:none;
+background:linear-gradient(90deg,#22c55e,#0ea5e9,#a855f7);
+font-weight:900;
 cursor:pointer;
-font-weight:bold;
 }
 
-textarea{
-height:240px;
-resize:none;
+.console{
+margin-top:20px;
+background:#020617;
+border-radius:16px;
+padding:14px;
+height:180px;
+overflow:auto;
+font-family:monospace;
+box-shadow:inset 0 0 14px #000;
+text-align:left;
 }
+
+.line{color:#22c55e}
+
+/* POPUP */
 
 .popup{
 position:fixed;
-inset:0;
-background:rgba(0,0,0,.85);
+top:-100%;
+inset-inline:0;
+bottom:0;
+background:rgba(2,6,23,.92);
 display:flex;
 justify-content:center;
 align-items:center;
+transition:.8s cubic-bezier(.2,1,.2,1);
+z-index:10;
 }
 
-.popupBox{
-background:#111;
-padding:25px;
-border-radius:15px;
+.popup.show{top:0}
+
+.popup-box{
+background:#0f172a;
+padding:40px;
+border-radius:24px;
+box-shadow:0 0 45px #a855f7aa;
 text-align:center;
-width:420px;
-box-shadow:0 0 20px #0ff;
+max-width:440px;
 }
+
+.popup h2{
+background:linear-gradient(90deg,#22c55e,#0ea5e9,#a855f7);
+-webkit-background-clip:text;
+color:transparent;
+}
+
+.fade{opacity:0;pointer-events:none;transition:.6s}
 </style>
 </head>
 <body>
 
-<div class="popup" id="disclaimer">
-  <div class="popupBox">
-    <h2>MOREEMM Disclaimer</h2>
-    <p>Educational purposes only.</p>
-    <button onclick="closePopup()">I Understand</button>
-  </div>
+<div class="rgb"></div>
+
+<div id="popup" class="popup show">
+<div class="popup-box">
+<h2>MOREEMM Disclaimer</h2>
+<p>This website and tools are for educational purposes only.<br>Use at your own responsibility.</p>
+<p style="opacity:.6">© 2026 MOREEMM</p>
+<button onclick="accept()">I Understand</button>
+</div>
 </div>
 
-<div class="neon">
-<h2>MOREEMM LUA Generator</h2>
+<div class="app">
+<div class="logo">MOREEMM</div>
 
 <input id="appid" placeholder="Enter Steam AppID">
 
-<button onclick="generate()">Generate & Download ZIP</button>
+<button onclick="generate()">Generate Lua ZIP</button>
 
-<textarea id="preview"></textarea>
+<div id="console" class="console"></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -98,25 +152,42 @@ box-shadow:0 0 20px #0ff;
 let depotKeys={}
 
 async function loadKeys(){
- const r=await fetch("https://raw.githubusercontent.com/SteamAutoCracks/ManifestHub/main/depotkeys.json")
- depotKeys=await r.json()
+ try{
+  let r=await fetch("https://raw.githubusercontent.com/SteamAutoCracks/ManifestHub/main/depotkeys.json")
+  depotKeys=await r.json()
+ }catch{}
 }
 loadKeys()
 
-function closePopup(){
- document.getElementById("disclaimer").style.display="none"
+function accept(){
+ document.getElementById("popup").classList.add("fade")
+ setTimeout(()=>document.getElementById("popup").style.display="none",600)
+}
+
+function log(t){
+ let c=document.getElementById("console")
+ let d=document.createElement("div")
+ d.className="line"
+ d.textContent=t
+ c.appendChild(d)
+ c.scrollTop=c.scrollHeight
 }
 
 async function generate(){
- const appid=document.getElementById("appid").value.trim()
- if(!appid) return
+ const id=document.getElementById("appid").value.trim()
+ if(!id) return log("❌ Enter AppID first")
 
- const r=await fetch(`https://api.steamcmd.net/v1/info/${appid}`)
+ log("🔍 Connecting to Steam API...")
+
+ try{
+ const r=await fetch("https://api.steamcmd.net/v1/info/"+id)
  const j=await r.json()
 
- let depots=j.data[appid].depots
+ log("✅ Data loaded")
+ log("⚙ Building Lua...")
 
- let lua=`-- Generated by MOREEMM\naddappid(${appid})\n`
+ let depots=j.data[id].depots
+ let lua=`-- Generated by MOREEMM\naddappid(${id})\n`
 
  for(let d in depots){
    if(!depots[d].manifests) continue
@@ -126,16 +197,20 @@ async function generate(){
    lua+=`setManifestid(${d},"${manifest}")\n`
  }
 
- document.getElementById("preview").value=lua
-
  const zip=new JSZip()
- zip.file("appid.lua",lua)
+ zip.file(id+".lua",lua)
 
  const blob=await zip.generateAsync({type:"blob"})
  const a=document.createElement("a")
  a.href=URL.createObjectURL(blob)
- a.download="MOREEMM_AppID.zip"
+ a.download=id+".zip"
  a.click()
+
+ log("📦 "+id+".zip downloaded successfully")
+
+ }catch{
+ log("❌ Steam API failed")
+ }
 }
 </script>
 
